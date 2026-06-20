@@ -1,0 +1,4 @@
+recursive-include pretix_ebics/static *
+recursive-include pretix_ebics/templates *
+recursive-include pretix_ebics/locale *
+include LICENSE
