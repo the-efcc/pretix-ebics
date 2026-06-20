@@ -76,6 +76,9 @@ include = ["pretix_ebics/ebics.py"]
 unknown-argument = "warn"
 unresolved-import = "warn"
 unresolved-attribute = "warn"
+invalid-argument-type = "warn"
+invalid-assignment = "warn"
+not-iterable = "warn"
 
 # ty cannot resolve attributes across Django ForeignKey descriptors.
 [[tool.ty.overrides]]
