@@ -132,6 +132,9 @@ class IniLetterView(EBICSBaseMixin, View):
                 _("Could not generate the INI letter: {error}").format(error=str(e)),
             )
             return redirect(self.list_url)
+        # Inline by default so the key hashes can be read off the letter and pasted
+        # into a bank portal; ?download=1 forces a file download instead.
+        disposition = "attachment" if request.GET.get("download") else "inline"
         response = HttpResponse(pdf, content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="ini-letter-{conn.pk}.pdf"'
+        response["Content-Disposition"] = f'{disposition}; filename="ini-letter-{conn.pk}.pdf"'
         return response

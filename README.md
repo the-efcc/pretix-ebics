@@ -75,8 +75,11 @@ The plugin must be enabled for your organizer. Then open
    currency, and a passphrase that will encrypt the private keys.
 2. **Generate keys** to create your EBICS key set.
 3. **Send INI** and **Send HIA** to transmit your public keys to the bank.
-4. **Download the INI letter** (PDF), sign it, and mail it to the bank as proof of
-   your keys.
+4. **Open the INI letter** (it opens inline in a new tab; append `?download=1` to
+   save it). It shows the SHA-256 hashes of your keys. Depending on the bank you
+   either sign and mail/upload it, or simply copy the hash values into the bank's
+   EBICS portal — that out-of-band check is what activates your keys, however the
+   bank chooses to receive it.
 5. Once the bank has activated your user, click **Activate bank keys** to fetch and
    trust the bank's public keys (HPB). The connection is now *ready*.
 6. From then on the periodic task imports new statements automatically; you can also

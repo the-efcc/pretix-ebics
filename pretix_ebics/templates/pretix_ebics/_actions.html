@@ -26,7 +26,8 @@
             </form>
         {% endif %}
         <a href="{% url "plugins:pretix_ebics:iniletter" organizer=request.organizer.slug pk=c.pk %}"
-           class="btn btn-default btn-sm">
+           class="btn btn-default btn-sm" target="_blank" rel="noopener"
+           title="{% trans "View the INI letter to read or copy the key hashes" %}">
             <span class="fa fa-file-pdf-o"></span> {% trans "INI letter" %}
         </a>
         {% if c.keys_sent and not c.bank_keys_activated %}

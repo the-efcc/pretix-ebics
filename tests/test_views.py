@@ -114,9 +114,16 @@ def test_action_import_now(monkeypatch, client_admin, organizer, connection):
     mock.assert_called_once()
 
 
-def test_ini_letter_download(monkeypatch, client_admin, organizer, connection):
+def test_ini_letter_inline_by_default(monkeypatch, client_admin, organizer, connection):
     monkeypatch.setattr(views.ebics, "ini_letter_pdf", lambda conn: b"%PDF-1.4")
     resp = client_admin.get(_url("iniletter", organizer, pk=connection.pk))
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/pdf"
+    assert resp["Content-Disposition"].startswith("inline")
     assert resp.content == b"%PDF-1.4"
+
+
+def test_ini_letter_forced_download(monkeypatch, client_admin, organizer, connection):
+    monkeypatch.setattr(views.ebics, "ini_letter_pdf", lambda conn: b"%PDF-1.4")
+    resp = client_admin.get(_url("iniletter", organizer, pk=connection.pk) + "?download=1")
+    assert resp["Content-Disposition"].startswith("attachment")
