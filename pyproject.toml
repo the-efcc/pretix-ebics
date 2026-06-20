@@ -87,6 +87,15 @@ include = ["pretix_ebics/models.py"]
 [tool.ty.overrides.rules]
 unresolved-attribute = "warn"
 
+# Django field descriptors and the untyped banktransfer plugin.
+[[tool.ty.overrides]]
+include = ["pretix_ebics/services.py"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "warn"
+invalid-assignment = "warn"
+unsupported-operator = "warn"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
