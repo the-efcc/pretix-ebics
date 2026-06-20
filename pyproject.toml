@@ -77,9 +77,17 @@ unknown-argument = "warn"
 unresolved-import = "warn"
 unresolved-attribute = "warn"
 
+# ty cannot resolve attributes across Django ForeignKey descriptors.
+[[tool.ty.overrides]]
+include = ["pretix_ebics/models.py"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "warn"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
 select = [
