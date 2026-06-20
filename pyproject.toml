@@ -96,6 +96,14 @@ unresolved-attribute = "warn"
 invalid-assignment = "warn"
 unsupported-operator = "warn"
 
+# Django class-based views: mixins provide request/object attributes ty can't see.
+[[tool.ty.overrides]]
+include = ["pretix_ebics/views.py"]
+
+[tool.ty.overrides.rules]
+missing-override-decorator = "warn"
+unresolved-attribute = "warn"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -117,6 +125,7 @@ select = [
 ]
 ignore = [
     "RUF005",  # Consider iterable unpacking - common pattern in pretix plugins
+    "RUF012",  # Django Model/Form Meta classes legitimately use mutable class attributes
 ]
 
 [tool.ruff.lint.per-file-ignores]

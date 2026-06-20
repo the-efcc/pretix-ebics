@@ -1,0 +1,19 @@
+{% extends "pretixcontrol/organizers/base.html" %}
+{% load i18n %}
+{% block inner %}
+    <h1>{% trans "Delete EBICS connection" %}</h1>
+    <form action="" method="post">
+        {% csrf_token %}
+        <p>
+            {% blocktrans trimmed with name=connection.name %}
+                Do you really want to delete the connection "{{ name }}"? Its stored EBICS keys
+                will be lost and you would have to repeat the key exchange with the bank.
+            {% endblocktrans %}
+        </p>
+        <div class="form-group submit-group">
+            <a href="{% url "plugins:pretix_ebics:list" organizer=request.organizer.slug %}"
+               class="btn btn-default btn-lg">{% trans "Cancel" %}</a>
+            <button type="submit" class="btn btn-danger btn-lg">{% trans "Delete" %}</button>
+        </div>
+    </form>
+{% endblock %}

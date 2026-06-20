@@ -1,0 +1,62 @@
+{% extends "pretixcontrol/organizers/base.html" %}
+{% load i18n %}
+{% block inner %}
+    <h1>{% trans "EBICS bank connections" %}</h1>
+    <p>
+        {% blocktrans trimmed %}
+            Connections listed here download bank statements over EBICS and import the
+            incoming transfers, matching them to your orders through the bank transfer plugin.
+        {% endblocktrans %}
+    </p>
+    <p>
+        <a href="{% url "plugins:pretix_ebics:add" organizer=request.organizer.slug %}"
+           class="btn btn-default">
+            <span class="fa fa-plus"></span> {% trans "Add a connection" %}
+        </a>
+    </p>
+
+    {% if connections %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{% trans "Name" %}</th>
+                        <th>{% trans "Status" %}</th>
+                        <th>{% trans "Last import" %}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in connections %}
+                        <tr>
+                            <td>
+                                <strong>{{ c.name }}</strong>
+                                {% if c.bank_name %}<br><small class="text-muted">{{ c.bank_name }}</small>{% endif %}
+                                {% if not c.active %}<span class="label label-default">{% trans "inactive" %}</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if c.is_ready %}
+                                    <span class="label label-success">{% trans "ready" %}</span>
+                                {% elif c.keys_sent %}
+                                    <span class="label label-warning">{% trans "waiting for bank activation" %}</span>
+                                {% elif c.keys_created %}
+                                    <span class="label label-info">{% trans "keys generated" %}</span>
+                                {% else %}
+                                    <span class="label label-default">{% trans "not initialized" %}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ c.last_imported_date|default:"—" }}</td>
+                            <td class="text-right">
+                                {% include "pretix_ebics/_actions.html" with c=c %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-collection">
+            <p>{% trans "You have not set up any EBICS connection yet." %}</p>
+        </div>
+    {% endif %}
+{% endblock %}

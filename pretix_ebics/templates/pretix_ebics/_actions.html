@@ -1,0 +1,53 @@
+{% load i18n %}
+{% url "plugins:pretix_ebics:action" organizer=request.organizer.slug pk=c.pk as action_url %}
+<div class="btn-group">
+    <a href="{% url "plugins:pretix_ebics:edit" organizer=request.organizer.slug pk=c.pk %}"
+       class="btn btn-default btn-sm">
+        <span class="fa fa-edit"></span> {% trans "Edit" %}
+    </a>
+    {% if not c.keys_created %}
+        <form action="{{ action_url }}" method="post" class="btn-group">
+            {% csrf_token %}
+            <button class="btn btn-default btn-sm" name="action" value="create_keys">
+                {% trans "Generate keys" %}
+            </button>
+        </form>
+    {% else %}
+        {% if not c.ini_sent %}
+            <form action="{{ action_url }}" method="post" class="btn-group">
+                {% csrf_token %}
+                <button class="btn btn-default btn-sm" name="action" value="send_ini">{% trans "Send INI" %}</button>
+            </form>
+        {% endif %}
+        {% if not c.hia_sent %}
+            <form action="{{ action_url }}" method="post" class="btn-group">
+                {% csrf_token %}
+                <button class="btn btn-default btn-sm" name="action" value="send_hia">{% trans "Send HIA" %}</button>
+            </form>
+        {% endif %}
+        <a href="{% url "plugins:pretix_ebics:iniletter" organizer=request.organizer.slug pk=c.pk %}"
+           class="btn btn-default btn-sm">
+            <span class="fa fa-file-pdf-o"></span> {% trans "INI letter" %}
+        </a>
+        {% if c.keys_sent and not c.bank_keys_activated %}
+            <form action="{{ action_url }}" method="post" class="btn-group">
+                {% csrf_token %}
+                <button class="btn btn-default btn-sm" name="action" value="activate_bank_keys">
+                    {% trans "Activate bank keys" %}
+                </button>
+            </form>
+        {% endif %}
+    {% endif %}
+    {% if c.is_ready %}
+        <form action="{{ action_url }}" method="post" class="btn-group">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-sm" name="action" value="import_now">
+                <span class="fa fa-download"></span> {% trans "Import now" %}
+            </button>
+        </form>
+    {% endif %}
+    <a href="{% url "plugins:pretix_ebics:delete" organizer=request.organizer.slug pk=c.pk %}"
+       class="btn btn-danger btn-sm">
+        <span class="fa fa-trash"></span>
+    </a>
+</div>
