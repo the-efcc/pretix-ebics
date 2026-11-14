@@ -23,11 +23,6 @@ def reset_locale():
 
 
 @pytest.fixture(autouse=True)
-def no_messages(monkeypatch):
-    monkeypatch.setattr("django.contrib.messages.api.add_message", lambda *args, **kwargs: None)
-
-
-@pytest.fixture(autouse=True)
 def disable_scopes():
     with scopes_disabled():
         yield

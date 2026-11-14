@@ -14,6 +14,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
+from functools import cached_property
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
@@ -62,10 +63,14 @@ KEY_VERSION = "A006"
 
 @dataclass
 class EbicsSession:
-    keyring: EbicsKeyRing
     bank: EbicsBank
     user: EbicsUser
-    client: EbicsClient
+    version: str
+
+    @cached_property
+    def client(self) -> EbicsClient:
+        # Built on first use: fintech refuses to create a client before the user has keys.
+        return EbicsClient(self.bank, self.user, version=self.version)
 
 
 @contextmanager
@@ -84,11 +89,11 @@ def ebics_session(conn: EBICSConnection) -> Iterator[EbicsSession]:
                 fh.write(conn.keyring_data)
 
         keyring = EbicsKeyRing(keys=keypath, passphrase=conn.passphrase or None)
-        bank = EbicsBank(keyring, conn.host_id, conn.ebics_url)
-        user = EbicsUser(keyring, conn.partner_id, conn.user_id)
-        client = EbicsClient(bank, user, version=conn.ebics_version)
-
-        yield EbicsSession(keyring=keyring, bank=bank, user=user, client=client)
+        yield EbicsSession(
+            bank=EbicsBank(keyring, conn.host_id, conn.ebics_url),
+            user=EbicsUser(keyring, conn.partner_id, conn.user_id),
+            version=conn.ebics_version,
+        )
 
         keyring.save()
         with open(keypath) as fh:

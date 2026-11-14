@@ -46,6 +46,27 @@ def test_transaction_to_dict_hashes_external_id_when_missing():
     assert d["external_id"].startswith("ebics-")
 
 
+def test_key_lifecycle_with_real_fintech():
+    """No mocks: keys are generated offline, stored on the connection and reopened."""
+    conn = SimpleNamespace(
+        keyring_data="",
+        passphrase="correct horse",
+        host_id="HOST",
+        ebics_url="https://ebics.example.com/ebics",
+        partner_id="P1",
+        user_id="U1",
+        ebics_version="H004",
+        bank_name="Demo Bank",
+        keys_created=False,
+    )
+
+    ebics.create_keys(conn)
+
+    assert conn.keys_created is True
+    assert conn.keyring_data
+    assert ebics.ini_letter_pdf(conn, lang="en").startswith(b"%PDF")
+
+
 def _patch_session(monkeypatch, session):
     @contextmanager
     def fake_cm(conn):

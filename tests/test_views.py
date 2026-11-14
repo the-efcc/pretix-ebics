@@ -97,12 +97,28 @@ def test_create_connection(client_admin, organizer):
     assert conn.organizer == organizer
 
 
-def test_action_create_keys(monkeypatch, client_admin, organizer, connection):
-    called = MagicMock()
-    monkeypatch.setattr(views.ebics, "create_keys", called)
-    resp = client_admin.post(_url("action", organizer, pk=connection.pk), {"action": "create_keys"})
-    assert resp.status_code == 302
-    called.assert_called_once()
+def test_action_create_keys_saves_the_connection(monkeypatch, client_admin, organizer, connection):
+    def fake_create_keys(conn):
+        conn.keyring_data, conn.keys_created = "{}", True
+
+    monkeypatch.setattr(views.ebics, "create_keys", fake_create_keys)
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "create_keys"}, follow=True
+    )
+    assert b"EBICS keys have been generated." in resp.content
+    connection.refresh_from_db()
+    assert connection.keys_created is True
+    assert connection.keyring_data == "{}"
+
+
+def test_action_failure_is_reported(monkeypatch, client_admin, organizer, connection):
+    monkeypatch.setattr(views.ebics, "create_keys", MagicMock(side_effect=RuntimeError("boom")))
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "create_keys"}, follow=True
+    )
+    assert b"The operation failed: boom" in resp.content
+    connection.refresh_from_db()
+    assert connection.keys_created is False
 
 
 def test_action_import_now(monkeypatch, client_admin, organizer, connection):
