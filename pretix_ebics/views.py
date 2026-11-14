@@ -113,10 +113,23 @@ class ConnectionActionView(EBICSBaseMixin, View):
                 messages.success(request, KEY_ACTIONS[action])
             elif action == "import_now":
                 result = import_for_connection(conn)
-                messages.success(
-                    request,
-                    _("Imported {n} transaction(s).").format(n=result.num_transactions),
-                )
+                if result is None:
+                    messages.warning(
+                        request,
+                        _(
+                            "An import for this connection was started a moment ago. "
+                            "Please try again in a few minutes."
+                        ),
+                    )
+                else:
+                    # The count includes the overlap days, which banktransfer skips again.
+                    messages.success(
+                        request,
+                        _(
+                            "Fetched {n} transaction(s) from the bank. "
+                            "New ones are now being matched to orders."
+                        ).format(n=result.num_transactions),
+                    )
             else:
                 messages.error(request, _("Unknown action."))
         except Exception as e:

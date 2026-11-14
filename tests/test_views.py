@@ -132,9 +132,19 @@ def test_action_import_now(monkeypatch, client_admin, organizer, connection):
     result = MagicMock(num_transactions=3)
     mock = MagicMock(return_value=result)
     monkeypatch.setattr(views, "import_for_connection", mock)
-    resp = client_admin.post(_url("action", organizer, pk=connection.pk), {"action": "import_now"})
-    assert resp.status_code == 302
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "import_now"}, follow=True
+    )
+    assert b"Fetched 3 transaction(s) from the bank." in resp.content
     mock.assert_called_once()
+
+
+def test_action_import_now_while_a_job_is_running(monkeypatch, client_admin, organizer, connection):
+    monkeypatch.setattr(views, "import_for_connection", lambda conn: None)
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "import_now"}, follow=True
+    )
+    assert b"was started a moment ago" in resp.content
 
 
 def test_ini_letter_inline_by_default(monkeypatch, client_admin, organizer, connection):

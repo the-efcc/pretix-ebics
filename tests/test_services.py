@@ -62,6 +62,29 @@ def test_import_creates_job_and_dispatches(monkeypatch, connection, no_dispatch)
     assert connection.last_imported_date == date.today()
 
 
+def test_skips_when_a_job_was_just_started(monkeypatch, connection, no_dispatch):
+    monkeypatch.setattr(services.ebics, "fetch_statements", lambda conn, start, end: [_row()])
+    monkeypatch.setattr(services.cache, "add", lambda *a, **k: False)
+
+    assert services.import_for_connection(connection) is None
+
+    assert not BankImportJob.objects.exists()
+    no_dispatch.assert_not_called()
+    connection.refresh_from_db()
+    assert connection.last_imported_date is None
+
+
+def test_failed_hand_over_keeps_the_watermark(monkeypatch, connection, no_dispatch):
+    monkeypatch.setattr(services.ebics, "fetch_statements", lambda conn, start, end: [_row()])
+    no_dispatch.side_effect = RuntimeError("broker down")
+
+    with pytest.raises(RuntimeError):
+        services.import_for_connection(connection)
+
+    connection.refresh_from_db()
+    assert connection.last_imported_date is None
+
+
 def test_first_run_backfills(monkeypatch, connection, no_dispatch):
     captured = {}
 
