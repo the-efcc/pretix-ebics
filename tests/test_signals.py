@@ -21,13 +21,7 @@ def _make_connection(organizer, name, *, active=True, activated=True):
     )
 
 
-@pytest.fixture
-def unthrottled(monkeypatch):
-    """Pretend the throttle lock is free so the receiver runs."""
-    monkeypatch.setattr(signals.cache, "add", lambda *a, **k: True)
-
-
-def test_imports_only_ready_connections(monkeypatch, organizer, unthrottled):
+def test_imports_only_ready_connections(monkeypatch, organizer):
     ready = _make_connection(organizer, "ready")
     _make_connection(organizer, "inactive", active=False)
     _make_connection(organizer, "not-activated", activated=False)
@@ -40,7 +34,7 @@ def test_imports_only_ready_connections(monkeypatch, organizer, unthrottled):
     assert imported == [ready.pk]
 
 
-def test_skips_organizers_that_disabled_the_plugin(monkeypatch, organizer, unthrottled):
+def test_skips_organizers_that_disabled_the_plugin(monkeypatch, organizer):
     _make_connection(organizer, "ready")
     organizer.plugins = ""
     organizer.save()
@@ -54,7 +48,7 @@ def test_skips_organizers_that_disabled_the_plugin(monkeypatch, organizer, unthr
 
 def test_throttle_skips_run(monkeypatch, organizer):
     _make_connection(organizer, "ready")
-    monkeypatch.setattr(signals.cache, "add", lambda *a, **k: False)
+    monkeypatch.setattr("pretix.helpers.periodic.cache.get", lambda key: "success")
     called = MagicMock()
     monkeypatch.setattr(signals, "import_for_connection", called)
 
@@ -63,7 +57,7 @@ def test_throttle_skips_run(monkeypatch, organizer):
     called.assert_not_called()
 
 
-def test_failure_does_not_stop_other_connections(monkeypatch, organizer, unthrottled):
+def test_failure_does_not_stop_other_connections(monkeypatch, organizer):
     a = _make_connection(organizer, "a")
     b = _make_connection(organizer, "b")
 

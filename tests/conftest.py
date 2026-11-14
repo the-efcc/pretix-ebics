@@ -1,11 +1,9 @@
 import inspect
 
 import pytest
-from django.test import RequestFactory
 from django.utils import translation
-from django.utils.timezone import now
 from django_scopes import scopes_disabled
-from pretix.base.models import Event, Organizer
+from pretix.base.models import Organizer
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -29,22 +27,5 @@ def disable_scopes():
 
 
 @pytest.fixture
-def rf():
-    return RequestFactory()
-
-
-@pytest.fixture
 def organizer():
     return Organizer.objects.create(name="Dummy", slug="dummy", plugins="pretix_ebics")
-
-
-@pytest.fixture
-def event(organizer):
-    return Event.objects.create(
-        organizer=organizer,
-        name="Dummy",
-        slug="dummy",
-        date_from=now(),
-        live=True,
-        plugins="pretix_ebics",
-    )
