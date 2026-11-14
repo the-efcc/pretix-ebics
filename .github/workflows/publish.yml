@@ -23,6 +23,10 @@ jobs:
       - name: Install Python 3.13
         run: uv python install 3.13
 
+      # A version number cannot be uploaded twice, so do not publish a broken one.
+      - name: Test
+        run: uv run --all-extras --locked pytest tests/ -q
+
       - name: Build
         run: uv build
 
