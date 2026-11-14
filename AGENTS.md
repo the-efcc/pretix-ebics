@@ -62,15 +62,14 @@ devenv shell -- uv run pytest tests/ -q -W ignore --cov=pretix_ebics --cov-repor
 - Unit tests for the camt parser and the import service.
 - `fintech.ebics` / `fintech.sepa` are fully mocked (no network, no license required).
 - The banktransfer `process_banktransfers` task is mocked in import-service tests.
-- Coverage reporting in CI with a diff comment on PRs.
+- Coverage is uploaded to Codecov from CI.
 
 ## CI/CD
 
 GitHub workflow runs on PRs:
-- **test**: pytest with coverage (Python 3.11-3.14)
-- **coverage-diff**: shows coverage change in PR comments
-- **typecheck**: ty type checking
-- **lint**: ruff linting
+- **test**: pytest with coverage (Python 3.11-3.14, latest dependencies)
+- **typecheck**: ty type checking (tool versions from `uv.lock`)
+- **lint**: ruff linting (tool versions from `uv.lock`)
 
 ## Type System Notes
 
