@@ -143,7 +143,8 @@ class IniLetterView(EBICSBaseMixin, View):
     def get(self, request: Any, *args: Any, **kwargs: Any) -> HttpResponse:
         conn = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
         try:
-            pdf = ebics.ini_letter_pdf(conn)
+            # In the admin's language ("de-informal" -> "de"), not the server's.
+            pdf = ebics.ini_letter_pdf(conn, lang=request.LANGUAGE_CODE[:2])
         except Exception as e:
             logger.exception("INI letter generation failed for connection %s", conn.pk)
             messages.error(

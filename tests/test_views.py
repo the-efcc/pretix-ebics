@@ -170,9 +170,13 @@ def test_action_import_now_while_a_job_is_running(monkeypatch, client_admin, org
     assert b"was started a moment ago" in resp.content
 
 
-def test_ini_letter_inline_by_default(monkeypatch, client_admin, organizer, connection):
-    monkeypatch.setattr(views.ebics, "ini_letter_pdf", lambda conn: b"%PDF-1.4")
+def test_ini_letter_inline_by_default(monkeypatch, client_admin, admin, organizer, connection):
+    admin.locale = "de-informal"
+    admin.save()
+    mock = MagicMock(return_value=b"%PDF-1.4")
+    monkeypatch.setattr(views.ebics, "ini_letter_pdf", mock)
     resp = client_admin.get(_url("iniletter", organizer, pk=connection.pk))
+    assert mock.call_args.kwargs == {"lang": "de"}
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/pdf"
     assert resp["Content-Disposition"].startswith("inline")
@@ -180,6 +184,6 @@ def test_ini_letter_inline_by_default(monkeypatch, client_admin, organizer, conn
 
 
 def test_ini_letter_forced_download(monkeypatch, client_admin, organizer, connection):
-    monkeypatch.setattr(views.ebics, "ini_letter_pdf", lambda conn: b"%PDF-1.4")
+    monkeypatch.setattr(views.ebics, "ini_letter_pdf", lambda conn, lang: b"%PDF-1.4")
     resp = client_admin.get(_url("iniletter", organizer, pk=connection.pk) + "?download=1")
     assert resp["Content-Disposition"].startswith("attachment")

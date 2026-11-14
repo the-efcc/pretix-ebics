@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 
 # Signature key version. A006 (RSASSA-PSS) is recommended for both H004 and H005.
 KEY_VERSION = "A006"
+INI_LETTER_LANGUAGES = ("de", "fr", "en")
 
 
 @dataclass
@@ -121,9 +122,16 @@ def activate_bank_keys(conn: EBICSConnection) -> None:
 
 
 def ini_letter_pdf(conn: EBICSConnection, lang: str | None = None) -> bytes:
-    """Return the INI letter as PDF bytes, to be printed, signed and mailed."""
+    """Return the INI letter as PDF bytes, to be printed, signed and mailed.
+
+    fintech writes it in ``lang`` if it is one of ``INI_LETTER_LANGUAGES`` and rejects
+    any other; in that case, and without one, it uses the server's locale.
+    """
     with ebics_session(conn) as session:
-        return session.user.create_ini_letter(bankname=conn.bank_name or conn.host_id, lang=lang)
+        return session.user.create_ini_letter(
+            bankname=conn.bank_name or conn.host_id,
+            lang=lang if lang in INI_LETTER_LANGUAGES else None,
+        )
 
 
 def _transaction_to_dict(txn: Any) -> dict[str, Any]:

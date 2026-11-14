@@ -218,3 +218,12 @@ def test_ini_letter_pdf(monkeypatch):
 
     assert pdf == b"%PDF-1.4"
     session.user.create_ini_letter.assert_called_once_with(bankname="Demo Bank", lang="en")
+
+
+def test_ini_letter_pdf_in_a_language_fintech_does_not_write(monkeypatch):
+    session = SimpleNamespace(client=MagicMock(), user=MagicMock(), bank=MagicMock())
+    _patch_session(monkeypatch, session)
+
+    ebics.ini_letter_pdf(SimpleNamespace(bank_name="Demo Bank", host_id="HOST"), lang="es")
+
+    session.user.create_ini_letter.assert_called_once_with(bankname="Demo Bank", lang=None)
