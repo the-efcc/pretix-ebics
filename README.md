@@ -53,8 +53,8 @@ pip install pretix-ebics
 
 `fintech` is "Free To Use But Restricted". In **evaluation mode** (no license) the
 EBICS module cannot retrieve statements from the **last three days** and caps SEPA
-uploads. For production, obtain a license from joonis and configure it through your
-pretix settings or environment:
+uploads. For production, obtain a license from joonis and set it in the environment
+of the pretix processes (web, worker and cron). Entries in `pretix.cfg` are not read:
 
 ```
 FINTECH_LICENSE_NAME=<your licensee name>
@@ -63,17 +63,23 @@ FINTECH_LICENSE_KEYCODE=<your key code>
 FINTECH_LICENSE_USERS=USER1,USER2
 ```
 
-The license is registered once at import time.
+The license is registered once, when pretix starts. If fintech rejects it, the error
+is logged and the plugin runs in evaluation mode, so check the log after changing it.
 
 ## Setup walkthrough
 
-The plugin must be enabled for your organizer. Then open
+EBICS is a *restricted* plugin, because a connection makes the server send requests to
+a URL typed in by an organizer admin. A system administrator first has to allow it: in
+admin mode, open the organizer's settings and select EBICS under **Allow usage of
+restricted plugins**. Then enable the plugin for the organizer, open
 **Organizer → EBICS** in the control panel and:
 
 1. **Add a connection** with the bank's Host ID, your Partner ID and User ID, the
-   EBICS URL, the EBICS version (H004 = EBICS 2.5, H005 = EBICS 3.0), the account
-   currency, and a passphrase that will encrypt the private keys.
-2. **Generate keys** to create your EBICS key set.
+   EBICS URL (`https://` only), the EBICS version (H004 = EBICS 2.5, H005 = EBICS 3.0),
+   the account currency, and a passphrase of at least 8 characters that will encrypt
+   the private keys. The passphrase cannot be changed once the keys exist.
+2. **Generate keys** to create your EBICS key set (and, for EBICS 3.0, the self-signed
+   certificates that carry it).
 3. **Send INI** and **Send HIA** to transmit your public keys to the bank.
 4. **Open the INI letter** (it opens inline in a new tab; append `?download=1` to
    save it). It shows the SHA-256 hashes of your keys. Depending on the bank you
@@ -83,14 +89,25 @@ The plugin must be enabled for your organizer. Then open
 5. Once the bank has activated your user, click **Activate bank keys** to fetch and
    trust the bank's public keys (HPB). The connection is now *ready*.
 6. From then on the periodic task imports new statements automatically; you can also
-   click **Import now** at any time.
+   click **Import now** at any time. A connection that has not imported for more than
+   two days is labelled **imports are failing**; the reason is in the pretix log.
+
+Disabling the plugin for an organizer stops its imports and hides its pages. The
+connections and their keys are kept.
 
 ## Security
 
 EBICS credentials and the key material are stored in the pretix database (the trust
 boundary). Private keys inside the keyring are encrypted with the per-connection
-passphrase. Deleting a connection discards its keys and requires repeating the key
-exchange with the bank.
+passphrase, but that passphrase is stored in the same database row. The encryption
+therefore does not protect the keys from anyone who can read the database or one of
+its backups.
+
+Ask your bank for an EBICS user that may only download statements. A leaked key can
+then be used to read your statements, but not to send payments.
+
+Deleting a connection discards its keys and requires repeating the key exchange with
+the bank.
 
 ## Development
 
@@ -115,8 +132,9 @@ uv run ty check pretix_ebics/
 uv run pytest tests/ --cov=pretix_ebics --cov-report=term-missing -v
 ```
 
-The test suite mocks `fintech` and the bank transfer task, so it needs neither
-network access nor a fintech license.
+The test suite mocks everything that would call the bank, and the bank transfer task,
+so it needs neither network access nor a fintech license. Key storage and statement
+parsing run against the real `fintech` library.
 
 ## License
 

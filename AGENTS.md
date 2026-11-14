@@ -24,7 +24,8 @@ order matching and payment confirmation.
 ## Architecture
 
 ### Import flow
-1. `periodic_task` (signals) fires on an interval, iterates active `EBICSConnection`s.
+1. `periodic_task` (signals) fires on an interval, iterates active `EBICSConnection`s
+   of organizers that have the plugin enabled.
 2. `services.import_for_connection()` downloads camt.053 via `ebics.fetch_statements()`.
 3. Credit transactions are mapped to banktransfer fields
    (`payer`, `reference`, `amount`, `date`, `iban`, `bic`, `external_id`).
@@ -52,7 +53,8 @@ devenv shell -- uv run pytest tests/ -q -W ignore --cov=pretix_ebics --cov-repor
 ## Important Conventions
 
 1. **Scope**: organizer-level. Connections and `BankImportJob`s are organizer-scoped.
-2. **Type Hints**: use `PretixHttpRequest` for views that access `request.organizer`.
+2. **Plugin activation**: pretix does not check it for control URLs or the periodic
+   task, so `EBICSBaseMixin.dispatch` and `run_ebics_imports` do.
 3. **Secrets**: EBICS keyring JSON is passphrase-encrypted and stored in the DB on the
    `EBICSConnection`. The pretix database is the trust boundary.
 4. **Import Sorting**: stdlib -> third-party -> local (enforced by ruff).
@@ -60,7 +62,9 @@ devenv shell -- uv run pytest tests/ -q -W ignore --cov=pretix_ebics --cov-repor
 ## Testing Strategy
 
 - Unit tests for the camt parser and the import service.
-- `fintech.ebics` / `fintech.sepa` are fully mocked (no network, no license required).
+- Everything that would call the bank is mocked (no network, no license required).
+  Key storage (`ebics_session`) and camt.053 parsing run against the real `fintech`
+  library: a mocked session once hid that key generation could not work at all.
 - The banktransfer `process_banktransfers` task is mocked in import-service tests.
 - Coverage is uploaded to Codecov from CI.
 
