@@ -27,10 +27,13 @@ order matching and payment confirmation.
 1. `periodic_task` (signals) fires on an interval, iterates active `EBICSConnection`s
    of organizers that have the plugin enabled.
 2. `services.import_for_connection()` downloads camt.053 via `ebics.fetch_statements()`.
-3. Credit transactions are mapped to banktransfer fields
+3. Transactions are mapped to banktransfer fields
    (`payer`, `reference`, `amount`, `date`, `iban`, `bic`, `external_id`).
 4. An organizer-scoped `BankImportJob` is created and `process_banktransfers(job, data)`
    is invoked; banktransfer matches order codes and confirms payments.
+5. Debit transactions never reach banktransfer (it would store all of them, and it
+   refuses refunds of canceled orders). `services.confirm_refunds()` marks an open
+   refund as done when a debit names its order and has its amount; the rest is dropped.
 
 ### Key-exchange flow (manual, admin-driven)
 1. Admin creates an `EBICSConnection` and generates keys (`create_keys`).

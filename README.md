@@ -19,6 +19,11 @@ The plugin is an **organizer-level integration**, not a payment provider:
    `BankImportJob`.
 3. pretix's built-in bank transfer plugin matches the payment references against
    your order codes and confirms the matching payments.
+4. Outgoing transfers are not imported. The plugin only uses them to tick off refunds
+   you wired by hand: when a transfer's reference contains an order code and its
+   amount equals an open manual or bank transfer refund of that order, the refund is
+   marked as done. The transfer must be booked on or after the day the refund was
+   created. Every other outgoing transfer is discarded and never stored.
 
 ## Requirements
 

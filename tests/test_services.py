@@ -1,7 +1,9 @@
 from datetime import date, timedelta
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
+from pretix.base.models import OrderRefund, Organizer
 from pretix.plugins.banktransfer.models import BankImportJob
 from pretix.plugins.banktransfer.tasks import process_banktransfers
 
@@ -118,3 +120,101 @@ def test_subsequent_run_overlaps_watermark(monkeypatch, connection, no_dispatch)
     services.import_for_connection(connection)
 
     assert captured["start"] == date(2026, 1, 10) - timedelta(days=services.OVERLAP_DAYS)
+
+
+TODAY = date.today().isoformat()
+
+
+def _refund(order, amount="23.00", **kwargs):
+    return order.refunds.create(
+        provider="manual",
+        state=OrderRefund.REFUND_STATE_CREATED,
+        source=OrderRefund.REFUND_SOURCE_ADMIN,
+        amount=Decimal(amount),
+        **kwargs,
+    )
+
+
+def _debit(reference="Refund DEMO-ABC12", amount="-23.00", booked=TODAY, ext="D1"):
+    return {**_row(ref=reference, amount=amount, ext=ext), "payer": "Jane Doe", "date": booked}
+
+
+def _import(monkeypatch, connection, rows):
+    monkeypatch.setattr(services.ebics, "fetch_statements", lambda conn, start, end: rows)
+    return services.import_for_connection(connection)
+
+
+def test_outgoing_transfer_confirms_its_refund_and_nothing_else_is_kept(
+    monkeypatch, connection, no_dispatch, order
+):
+    refund = _refund(order)
+    credit, rent = _row(), _debit(reference="Rent January", amount="-900.00", ext="D2")
+
+    result = _import(monkeypatch, connection, [credit, _debit(), rent])
+
+    assert result.num_refunds == 1
+    refund.refresh_from_db()
+    assert refund.state == OrderRefund.REFUND_STATE_DONE
+    assert refund.info_data["reference"] == "Refund DEMO-ABC12"
+    # Outgoing transfers never reach banktransfer, which would store them all.
+    assert no_dispatch.call_args.kwargs["kwargs"]["data"] == [credit]
+    assert result.num_transactions == 1
+
+
+@pytest.mark.parametrize(
+    "debit",
+    [
+        _debit(amount="-22.00"),  # not the refund's amount
+        _debit(reference="Refund for your ticket"),  # no order code
+        _debit(reference="Refund DEMO-ZZZ99"),  # another order
+        # Booked before the refund existed: it paid for an earlier refund.
+        _debit(booked=(date.today() - timedelta(days=1)).isoformat()),
+    ],
+)
+def test_outgoing_transfer_that_is_no_match_changes_nothing(
+    monkeypatch, connection, no_dispatch, order, debit
+):
+    refund = _refund(order)
+
+    assert _import(monkeypatch, connection, [debit]).num_refunds == 0
+
+    refund.refresh_from_db()
+    assert refund.state == OrderRefund.REFUND_STATE_CREATED
+    no_dispatch.assert_not_called()
+
+
+def test_reference_broken_up_by_the_bank_still_matches(monkeypatch, connection, no_dispatch, order):
+    refund = _refund(order)
+
+    _import(monkeypatch, connection, [_debit(reference="refund demo abc 12 thanks")])
+
+    refund.refresh_from_db()
+    assert refund.state == OrderRefund.REFUND_STATE_DONE
+
+
+def test_one_transfer_confirms_one_refund_even_when_fetched_again(
+    monkeypatch, connection, no_dispatch, order
+):
+    """Statements overlap between runs: the same transfer must not confirm a second refund."""
+    first, second = _refund(order), _refund(order)
+
+    assert _import(monkeypatch, connection, [_debit()]).num_refunds == 1
+    assert _import(monkeypatch, connection, [_debit()]).num_refunds == 0
+
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert sorted([first.state, second.state]) == sorted(
+        [OrderRefund.REFUND_STATE_DONE, OrderRefund.REFUND_STATE_CREATED]
+    )
+
+
+def test_refunds_of_another_organizer_are_left_alone(monkeypatch, connection, no_dispatch, order):
+    refund = _refund(order)
+    other = Organizer.objects.create(name="Other", slug="other", plugins="pretix_ebics")
+    connection.organizer = other
+    connection.save()
+
+    assert _import(monkeypatch, connection, [_debit()]).num_refunds == 0
+
+    refund.refresh_from_db()
+    assert refund.state == OrderRefund.REFUND_STATE_CREATED

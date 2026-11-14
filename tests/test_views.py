@@ -138,7 +138,7 @@ def test_action_failure_is_reported(monkeypatch, client_admin, organizer, connec
 
 
 def test_action_import_now(monkeypatch, client_admin, organizer, connection):
-    result = MagicMock(num_transactions=3)
+    result = MagicMock(num_transactions=3, num_refunds=0)
     mock = MagicMock(return_value=result)
     monkeypatch.setattr(views, "import_for_connection", mock)
     resp = client_admin.post(
@@ -160,6 +160,29 @@ def test_action_import_now_refused_for_an_inactive_connection(
     )
     assert b"Unknown action." in resp.content
     mock.assert_not_called()
+
+
+def test_action_import_now_reports_confirmed_refunds(
+    monkeypatch, client_admin, organizer, connection, order
+):
+    """The real import service inside a request: pretix scopes its queries there."""
+    refund = order.refunds.create(provider="manual", state="created", source="admin", amount=23)
+    debit = {
+        "payer": "Jane Doe",
+        "reference": "Refund DEMO-ABC12",
+        "amount": "-23.00",
+        "date": date.today().isoformat(),
+        "iban": "",
+        "bic": "",
+        "external_id": "D1",
+    }
+    monkeypatch.setattr(views.ebics, "fetch_statements", lambda conn, start, end: [debit])
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "import_now"}, follow=True
+    )
+    assert b"1 refund(s) were marked as done." in resp.content
+    refund.refresh_from_db()
+    assert refund.state == "done"
 
 
 def test_action_import_now_while_a_job_is_running(monkeypatch, client_admin, organizer, connection):

@@ -158,11 +158,12 @@ def _transaction_to_dict(txn: Any) -> dict[str, Any]:
 
 
 def fetch_statements(conn: EBICSConnection, start: date, end: date) -> list[dict[str, Any]]:
-    """Download camt.053 statements for ``[start, end]`` and return credit transfers.
+    """Download camt.053 statements for ``[start, end]`` and return their transfers.
 
-    Only incoming (credit) transactions are returned, mapped to the field names the
-    banktransfer plugin expects. The download is confirmed so the bank does not
-    serve the same statements again on the next run.
+    Each transfer is mapped to the field names the banktransfer plugin expects.
+    Outgoing ones have a negative amount; the caller decides what may be stored. The
+    download is confirmed so the bank does not serve the same statements again on the
+    next run.
     """
     results: list[dict[str, Any]] = []
     with ebics_session(conn) as session:
@@ -177,7 +178,7 @@ def fetch_statements(conn: EBICSConnection, start: date, end: date) -> list[dict
                 # inside when the bank delivers them in a separate file.
                 transfers = list(entry) if entry.batch else []
                 for txn in transfers or [entry]:
-                    if txn.amount.value > 0:
+                    if txn.amount.value:
                         row = _transaction_to_dict(txn)
                         if transfers:
                             # They share the batch's bank reference, which banktransfer

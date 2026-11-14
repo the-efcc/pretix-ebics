@@ -124,13 +124,15 @@ class ConnectionActionView(EBICSBaseMixin, View):
                     )
                 else:
                     # The count includes the overlap days, which banktransfer skips again.
-                    messages.success(
-                        request,
-                        _(
-                            "Fetched {n} transaction(s) from the bank. "
-                            "New ones are now being matched to orders."
-                        ).format(n=result.num_transactions),
-                    )
+                    message = _(
+                        "Fetched {n} transaction(s) from the bank. "
+                        "New ones are now being matched to orders."
+                    ).format(n=result.num_transactions)
+                    if result.num_refunds:
+                        message += " " + _("{n} refund(s) were marked as done.").format(
+                            n=result.num_refunds
+                        )
+                    messages.success(request, message)
             else:
                 messages.error(request, _("Unknown action."))
         except Exception as e:

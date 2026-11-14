@@ -102,7 +102,7 @@ def _patch_session(monkeypatch, session):
     monkeypatch.setattr(ebics, "ebics_session", fake_cm)
 
 
-def test_fetch_statements_keeps_only_credits(monkeypatch):
+def test_fetch_statements_returns_outgoing_transfers_as_negative(monkeypatch):
     session = SimpleNamespace(client=MagicMock())
     session.client.C53.return_value = {"stmt": "<xml/>"}
     credit = make_txn("10.00", bank_reference="C1")
@@ -112,7 +112,7 @@ def test_fetch_statements_keeps_only_credits(monkeypatch):
 
     result = ebics.fetch_statements(SimpleNamespace(), date(2026, 1, 1), date(2026, 1, 31))
 
-    assert [r["external_id"] for r in result] == ["C1"]
+    assert [(r["external_id"], r["amount"]) for r in result] == [("C1", "10.00"), ("D1", "-7.00")]
     session.client.C53.assert_called_once_with(start=date(2026, 1, 1), end=date(2026, 1, 31))
     session.client.confirm_download.assert_called_once()
 
