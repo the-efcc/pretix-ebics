@@ -8,7 +8,6 @@ plugin understands.
 
 from __future__ import annotations
 
-import hashlib
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -138,32 +137,23 @@ def ini_letter_pdf(conn: EBICSConnection, lang: str | None = None) -> bytes:
 def _transaction_to_dict(txn: Any) -> dict[str, Any]:
     parts = [str(p) for p in (txn.purpose or ()) if p]
     eref = getattr(txn, "eref", None)
-    if eref and str(eref) not in parts:
+    # Banks fill an empty end-to-end reference with the word NOTPROVIDED.
+    if eref and str(eref) != "NOTPROVIDED" and str(eref) not in parts:
         parts.append(str(eref))
     reference = " ".join(parts)
 
     booking = txn.date
     date_str = booking.isoformat() if hasattr(booking, "isoformat") else str(booking)
-    amount = str(txn.amount.value)
-    payer = txn.name or ""
-    iban = getattr(txn, "iban", "") or ""
-    bic = getattr(txn, "bic", "") or ""
-
-    external_id = getattr(txn, "bank_reference", None) or getattr(txn, "id", None)
-    if not external_id:
-        digest = hashlib.sha256(
-            "|".join([date_str, amount, reference, payer]).encode()
-        ).hexdigest()
-        external_id = f"ebics-{digest[:32]}"
 
     return {
-        "payer": payer,
+        "payer": txn.name or "",
         "reference": reference,
-        "amount": amount,
+        "amount": str(txn.amount.value),
         "date": date_str,
-        "iban": iban,
-        "bic": bic,
-        "external_id": str(external_id),
+        "iban": getattr(txn, "iban", "") or "",
+        "bic": getattr(txn, "bic", "") or "",
+        # Without it banktransfer detects duplicates by payer, reference, amount and date.
+        "external_id": txn.bank_reference or None,
     }
 
 
@@ -174,12 +164,25 @@ def fetch_statements(conn: EBICSConnection, start: date, end: date) -> list[dict
     banktransfer plugin expects. The download is confirmed so the bank does not
     serve the same statements again on the next run.
     """
+    results: list[dict[str, Any]] = []
     with ebics_session(conn) as session:
+        # A date range without statements is normal, not an error.
+        session.client.suppress_no_data_error = True
         documents = session.client.C53(start=start, end=end)
-        results: list[dict[str, Any]] = []
+        if not documents:
+            return results
         for xml in documents.values():
-            for txn in CAMTDocument(xml):
-                if txn.amount.value > 0:
-                    results.append(_transaction_to_dict(txn))
+            for entry in CAMTDocument(xml):
+                # A batch entry is one booking that holds the real transfers; it has none
+                # inside when the bank delivers them in a separate file.
+                transfers = list(entry) if entry.batch else []
+                for txn in transfers or [entry]:
+                    if txn.amount.value > 0:
+                        row = _transaction_to_dict(txn)
+                        if transfers:
+                            # They share the batch's bank reference, which banktransfer
+                            # would take for the same transfer imported twice.
+                            row["external_id"] = None
+                        results.append(row)
         session.client.confirm_download()
     return results
