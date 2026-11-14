@@ -53,7 +53,8 @@ def test_transaction_to_dict_without_bank_reference():
     assert d["external_id"] is None
 
 
-def test_key_lifecycle_with_real_fintech():
+@pytest.mark.parametrize("version", ["H004", "H005"])
+def test_key_lifecycle_with_real_fintech(version):
     """No mocks: keys are generated offline, stored on the connection and reopened."""
     conn = SimpleNamespace(
         keyring_data="",
@@ -62,7 +63,7 @@ def test_key_lifecycle_with_real_fintech():
         ebics_url="https://ebics.example.com/ebics",
         partner_id="P1",
         user_id="U1",
-        ebics_version="H004",
+        ebics_version=version,
         bank_name="Demo Bank",
         keys_created=False,
     )
@@ -72,6 +73,9 @@ def test_key_lifecycle_with_real_fintech():
     assert conn.keys_created is True
     assert conn.keyring_data
     assert ebics.ini_letter_pdf(conn, lang="en").startswith(b"%PDF")
+    with ebics.ebics_session(conn) as session:
+        # fintech raises here when keys (or, for H005, certificates) are missing.
+        assert session.client
 
 
 def test_rejected_license_falls_back_to_evaluation_mode(monkeypatch):
@@ -183,11 +187,12 @@ def test_key_transfers_set_flags(monkeypatch, func, method, flag):
 def test_create_keys(monkeypatch):
     session = SimpleNamespace(client=MagicMock(), user=MagicMock(), bank=MagicMock())
     _patch_session(monkeypatch, session)
-    conn = SimpleNamespace(keys_created=False)
+    conn = SimpleNamespace(keys_created=False, ebics_version="H004")
 
     ebics.create_keys(conn)
 
     session.user.create_keys.assert_called_once_with(keyversion=ebics.KEY_VERSION)
+    session.user.create_certificates.assert_not_called()
     assert conn.keys_created is True
 
 

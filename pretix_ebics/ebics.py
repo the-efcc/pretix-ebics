@@ -91,6 +91,10 @@ def create_keys(conn: EBICSConnection) -> None:
     """Generate the user's EBICS keys (signature, authentication, encryption)."""
     with ebics_session(conn) as session:
         session.user.create_keys(keyversion=KEY_VERSION)
+        if conn.ebics_version == "H005":
+            # EBICS 3.0 sends the keys as X.509 certificates; fintech refuses to build
+            # a client for it without them. Self-signed is what banks expect here.
+            session.user.create_certificates(commonName=conn.user_id)
     conn.keys_created = True
 
 
