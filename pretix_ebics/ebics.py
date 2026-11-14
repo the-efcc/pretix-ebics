@@ -8,6 +8,7 @@ plugin understands.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -18,33 +19,28 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
 import fintech
-from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+LICENSE_VARIABLES = ("FINTECH_LICENSE_NAME", "FINTECH_LICENSE_KEYCODE", "FINTECH_LICENSE_USERS")
 
 
 def _register() -> None:
     """Register the fintech license, falling back to evaluation mode.
 
     fintech refuses to import its EBICS submodule until ``register()`` has been
-    called, so this runs at import time. A configured license (Django settings or
-    the matching environment variables) lifts the evaluation-mode restrictions:
-    without it, SEPA uploads are capped and statements from the last three days
-    cannot be retrieved.
+    called, so this runs at import time, which is when pretix starts. fintech reads
+    the license from the ``FINTECH_LICENSE_*`` environment variables itself. Without
+    one it runs in evaluation mode: SEPA uploads are capped and statements from the
+    last three days cannot be retrieved.
     """
-    name = getattr(settings, "FINTECH_LICENSE_NAME", None) or os.environ.get(
-        "FINTECH_LICENSE_NAME"
-    )
-    keycode = getattr(settings, "FINTECH_LICENSE_KEYCODE", None) or os.environ.get(
-        "FINTECH_LICENSE_KEYCODE"
-    )
-    if name and keycode:
-        users = getattr(settings, "FINTECH_LICENSE_USERS", None) or os.environ.get(
-            "FINTECH_LICENSE_USERS"
-        )
-        kwargs: dict[str, Any] = {"name": name, "keycode": keycode}
-        if users:
-            kwargs["users"] = tuple(u.strip() for u in str(users).split(",") if u.strip())
-        fintech.register(**kwargs)
-    else:
+    try:
+        fintech.register()
+    except Exception:
+        # A mistyped key must not keep the whole ticket shop from starting.
+        logger.exception("fintech rejected the configured license, using evaluation mode")
+        for variable in LICENSE_VARIABLES:
+            os.environ.pop(variable, None)
         fintech.register()
 
 

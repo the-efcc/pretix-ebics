@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 from datetime import date
 from decimal import Decimal
@@ -71,6 +72,22 @@ def test_key_lifecycle_with_real_fintech():
     assert conn.keys_created is True
     assert conn.keyring_data
     assert ebics.ini_letter_pdf(conn, lang="en").startswith(b"%PDF")
+
+
+def test_rejected_license_falls_back_to_evaluation_mode(monkeypatch):
+    monkeypatch.setenv("FINTECH_LICENSE_KEYCODE", "typo")
+    calls = []
+
+    def fake_register():
+        calls.append(os.environ.get("FINTECH_LICENSE_KEYCODE"))
+        if calls[-1]:
+            raise RuntimeError("invalid keycode")
+
+    monkeypatch.setattr(ebics.fintech, "register", fake_register)
+
+    ebics._register()
+
+    assert calls == ["typo", None]
 
 
 def _patch_session(monkeypatch, session):
