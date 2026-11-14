@@ -148,6 +148,20 @@ def test_action_import_now(monkeypatch, client_admin, organizer, connection):
     mock.assert_called_once()
 
 
+def test_action_import_now_refused_for_an_inactive_connection(
+    monkeypatch, client_admin, organizer, connection
+):
+    connection.active = False
+    connection.save()
+    mock = MagicMock()
+    monkeypatch.setattr(views, "import_for_connection", mock)
+    resp = client_admin.post(
+        _url("action", organizer, pk=connection.pk), {"action": "import_now"}, follow=True
+    )
+    assert b"Unknown action." in resp.content
+    mock.assert_not_called()
+
+
 def test_action_import_now_while_a_job_is_running(monkeypatch, client_admin, organizer, connection):
     monkeypatch.setattr(views, "import_for_connection", lambda conn: None)
     resp = client_admin.post(

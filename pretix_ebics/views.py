@@ -111,7 +111,8 @@ class ConnectionActionView(EBICSBaseMixin, View):
                 getattr(ebics, action)(conn)
                 conn.save()
                 messages.success(request, KEY_ACTIONS[action])
-            elif action == "import_now":
+            # The button is hidden for these, but a page left open still has it.
+            elif action == "import_now" and conn.is_ready:
                 result = import_for_connection(conn)
                 if result is None:
                     messages.warning(
