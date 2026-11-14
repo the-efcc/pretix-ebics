@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_scopes import ScopedManager
+from pretix.base.models import Event
 from typing_extensions import override
 
 
@@ -39,7 +40,13 @@ class EBICSConnection(models.Model):
         default=EBICS_VERSION_H004,
         verbose_name=_("EBICS version"),
     )
-    currency = models.CharField(max_length=10, default="EUR", verbose_name=_("Currency"))
+    # Must equal the event currency exactly, or banktransfer refuses every matched transfer.
+    currency = models.CharField(
+        max_length=10,
+        default="EUR",
+        choices=Event.CURRENCY_CHOICES,
+        verbose_name=_("Currency"),
+    )
     active = models.BooleanField(default=True, verbose_name=_("Active"))
 
     # Key-exchange progress (see the key-exchange flow in AGENTS.md).

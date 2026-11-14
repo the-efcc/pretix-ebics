@@ -88,7 +88,7 @@ def test_create_connection(client_admin, organizer):
             "ebics_url": "https://ebics.example.com/ebics",
             "ebics_version": "H004",
             "currency": "EUR",
-            "passphrase": "secret",
+            "passphrase": "correct horse",
             "active": "on",
         },
     )
