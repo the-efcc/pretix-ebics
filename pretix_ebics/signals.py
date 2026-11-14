@@ -28,10 +28,13 @@ def run_ebics_imports(sender: Any, **kwargs: Any) -> None:
         return
 
     with scopes_disabled():
-        connections = list(
-            EBICSConnection.objects.filter(active=True, bank_keys_activated=True)
-        )
+        connections = EBICSConnection.objects.filter(
+            active=True, bank_keys_activated=True
+        ).select_related("organizer")
         for conn in connections:
+            # The plugin may have been disabled for the organizer since the setup.
+            if "pretix_ebics" not in conn.organizer.get_plugins():
+                continue
             try:
                 import_for_connection(conn)
             except Exception:

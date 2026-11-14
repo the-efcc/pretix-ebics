@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -33,6 +33,12 @@ KEY_ACTIONS = {
 
 class EBICSBaseMixin(OrganizerDetailViewMixin, OrganizerPermissionRequiredMixin):
     permission = PERMISSION
+
+    def dispatch(self, request: Any, *args: Any, **kwargs: Any) -> Any:
+        # pretix checks this for a plugin's shop URLs, but not for its control URLs.
+        if "pretix_ebics" not in request.organizer.get_plugins():
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         with scopes_disabled():

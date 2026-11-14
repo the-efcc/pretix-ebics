@@ -35,7 +35,7 @@ def rf():
 
 @pytest.fixture
 def organizer():
-    return Organizer.objects.create(name="Dummy", slug="dummy")
+    return Organizer.objects.create(name="Dummy", slug="dummy", plugins="pretix_ebics")
 
 
 @pytest.fixture

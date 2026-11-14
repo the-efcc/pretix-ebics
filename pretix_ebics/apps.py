@@ -21,6 +21,9 @@ class PluginApp(PluginConfig):
         author = "Sweenu"
         description = _("Automatically import bank transfers over EBICS into pretix")
         visible = True
+        # Connections make the server call a URL typed in by an organizer admin, so only a
+        # system administrator may allow the plugin for an organizer.
+        restricted = True
         version = __version__
         category = "INTEGRATION"
         compatibility = "pretix>=2026.3.0"

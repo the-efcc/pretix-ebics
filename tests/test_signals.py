@@ -40,6 +40,18 @@ def test_imports_only_ready_connections(monkeypatch, organizer, unthrottled):
     assert imported == [ready.pk]
 
 
+def test_skips_organizers_that_disabled_the_plugin(monkeypatch, organizer, unthrottled):
+    _make_connection(organizer, "ready")
+    organizer.plugins = ""
+    organizer.save()
+    called = MagicMock()
+    monkeypatch.setattr(signals, "import_for_connection", called)
+
+    signals.run_ebics_imports(sender=None)
+
+    called.assert_not_called()
+
+
 def test_throttle_skips_run(monkeypatch, organizer):
     _make_connection(organizer, "ready")
     monkeypatch.setattr(signals.cache, "add", lambda *a, **k: False)

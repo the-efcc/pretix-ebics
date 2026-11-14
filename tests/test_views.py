@@ -70,6 +70,13 @@ def test_list_requires_permission(organizer, limited_member):
     assert c.get(_url("list", organizer)).status_code == 403
 
 
+def test_pages_are_gone_when_the_plugin_is_disabled(client_admin, organizer, connection):
+    organizer.plugins = ""
+    organizer.save()
+    assert client_admin.get(_url("list", organizer)).status_code == 404
+    assert client_admin.get(_url("iniletter", organizer, pk=connection.pk)).status_code == 404
+
+
 def test_list_shows_connections(client_admin, organizer, connection):
     resp = client_admin.get(_url("list", organizer))
     assert resp.status_code == 200
