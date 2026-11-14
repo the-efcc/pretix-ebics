@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -81,6 +82,14 @@ def test_list_shows_connections(client_admin, organizer, connection):
     resp = client_admin.get(_url("list", organizer))
     assert resp.status_code == 200
     assert b"My Bank" in resp.content
+
+
+def test_list_flags_a_connection_whose_imports_fail(client_admin, organizer, connection):
+    connection.last_imported_date = date.today() - timedelta(days=3)
+    connection.save()
+    resp = client_admin.get(_url("list", organizer))
+    assert b"imports are failing" in resp.content
+    assert b'aria-label="Delete"' in resp.content
 
 
 def test_create_connection(client_admin, organizer):

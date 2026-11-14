@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 
 from pretix_ebics.models import EBICSConnection
@@ -44,6 +46,17 @@ def test_is_ready(connection):
     assert connection.is_ready is True
     connection.active = False
     assert connection.is_ready is False
+
+
+def test_is_stale_when_a_ready_connection_stopped_importing(connection):
+    connection.bank_keys_activated = True
+    assert connection.is_stale is False  # never imported yet
+    connection.last_imported_date = date.today() - timedelta(days=1)
+    assert connection.is_stale is False
+    connection.last_imported_date = date.today() - timedelta(days=3)
+    assert connection.is_stale is True
+    connection.active = False
+    assert connection.is_stale is False
 
 
 def test_scoped_to_organizer(connection, organizer):

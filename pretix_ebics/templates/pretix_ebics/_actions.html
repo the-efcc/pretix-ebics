@@ -48,7 +48,7 @@
         </form>
     {% endif %}
     <a href="{% url "plugins:pretix_ebics:delete" organizer=request.organizer.slug pk=c.pk %}"
-       class="btn btn-danger btn-sm">
-        <span class="fa fa-trash"></span>
+       class="btn btn-danger btn-sm" title="{% trans "Delete" %}" aria-label="{% trans "Delete" %}">
+        <span class="fa fa-trash" aria-hidden="true"></span>
     </a>
 </div>

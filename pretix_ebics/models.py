@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_scopes import ScopedManager
@@ -80,3 +82,12 @@ class EBICSConnection(models.Model):
     def is_ready(self) -> bool:
         """Whether the connection is fully set up and may be used for imports."""
         return bool(self.active and self.bank_keys_activated)
+
+    @property
+    def is_stale(self) -> bool:
+        """Whether a ready connection has not imported for days, so imports keep failing."""
+        return bool(
+            self.is_ready
+            and self.last_imported_date
+            and self.last_imported_date < date.today() - timedelta(days=2)
+        )

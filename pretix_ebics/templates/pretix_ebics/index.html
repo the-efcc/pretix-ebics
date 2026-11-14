@@ -35,7 +35,9 @@
                                 {% if not c.active %}<span class="label label-default">{% trans "inactive" %}</span>{% endif %}
                             </td>
                             <td>
-                                {% if c.is_ready %}
+                                {% if c.is_stale %}
+                                    <span class="label label-danger">{% trans "imports are failing" %}</span>
+                                {% elif c.is_ready %}
                                     <span class="label label-success">{% trans "ready" %}</span>
                                 {% elif c.keys_sent %}
                                     <span class="label label-warning">{% trans "waiting for bank activation" %}</span>
