@@ -8,6 +8,7 @@ plugin understands.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Iterator
@@ -15,7 +16,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
 from functools import cached_property
-from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
 import fintech
@@ -70,29 +70,21 @@ class EbicsSession:
 
 @contextmanager
 def ebics_session(conn: EBICSConnection) -> Iterator[EbicsSession]:
-    """Build a fintech client for ``conn`` backed by a temporary keyring file.
+    """Build the fintech objects for ``conn`` from the keyring stored on it.
 
-    The keyring is materialized from ``conn.keyring_data`` into a temp file for the
-    duration of the call, then written back into ``conn.keyring_data`` so that any
-    key material created during the session is persisted by the caller (the caller
-    is responsible for ``conn.save()``).
+    fintech applies every change to the ``keys`` dict, which never touches the disk.
+    It is written back into ``conn.keyring_data`` so that key material created during
+    the session is persisted by the caller (the caller is responsible for
+    ``conn.save()``).
     """
-    with TemporaryDirectory() as tmp:
-        keypath = os.path.join(tmp, "keyring.ebics")
-        if conn.keyring_data:
-            with open(keypath, "w") as fh:
-                fh.write(conn.keyring_data)
-
-        keyring = EbicsKeyRing(keys=keypath, passphrase=conn.passphrase or None)
-        yield EbicsSession(
-            bank=EbicsBank(keyring, conn.host_id, conn.ebics_url),
-            user=EbicsUser(keyring, conn.partner_id, conn.user_id),
-            version=conn.ebics_version,
-        )
-
-        keyring.save()
-        with open(keypath) as fh:
-            conn.keyring_data = fh.read()
+    keys = json.loads(conn.keyring_data or "{}")
+    keyring = EbicsKeyRing(keys=keys, passphrase=conn.passphrase or None)
+    yield EbicsSession(
+        bank=EbicsBank(keyring, conn.host_id, conn.ebics_url),
+        user=EbicsUser(keyring, conn.partner_id, conn.user_id),
+        version=conn.ebics_version,
+    )
+    conn.keyring_data = json.dumps(keys)
 
 
 def create_keys(conn: EBICSConnection) -> None:

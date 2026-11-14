@@ -143,7 +143,6 @@ class IniLetterView(EBICSBaseMixin, View):
         conn = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
         try:
             pdf = ebics.ini_letter_pdf(conn)
-            conn.save(update_fields=["keyring_data"])
         except Exception as e:
             logger.exception("INI letter generation failed for connection %s", conn.pk)
             messages.error(
